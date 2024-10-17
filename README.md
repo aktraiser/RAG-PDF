@@ -31,8 +31,8 @@ Gradio-based RAG app for querying PDF content using multiple LLMs from OpenAI an
 1. **Clone the Repository:**
 
     ```bash
-    git clone https://github.com/your-username/deep-learning-multi-agent-systems.git
-    cd deep-learning-multi-agent-systems
+    git clone https://github.com/aktraiser/RAG-PDF.git
+    cd RAG-PDF
     ```
 
 2. **Create a Virtual Environment:**
