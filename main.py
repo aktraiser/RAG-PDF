@@ -140,21 +140,61 @@ def summarize_text(text, client, model):
     Returns:
         str: The summarized text.
     """
+    from transformers import AutoTokenizer
+
     try:
+        # Initialize tokenizer to get model's maximum context length
         if model in get_openai_models():
-            prompt = f"Please provide a concise summary of the following text:\n\n{text}"
-            response = client.chat.completions.create(
+            # OpenAI models have different token limits; adjust accordingly
+            max_tokens = 4096  # Example limit for GPT-4
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(model)
+            max_tokens = tokenizer.model_max_length
+
+        # Define a function to split text into chunks
+        def split_into_chunks(text, max_tokens):
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=max_tokens - 500,  # Reserve tokens for the summary
+                chunk_overlap=100
+            )
+            return text_splitter.split_text(text)
+
+        # Split the text into manageable chunks
+        chunks = split_into_chunks(text, max_tokens)
+
+        summaries = []
+        for chunk in chunks:
+            if model in get_openai_models():
+                prompt = f"Please provide a concise summary of the following text:\n\n{chunk}"
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=512
+                )
+                summary = response.choices[0].message.content.strip()
+            else:
+                prompt = f"Please provide a concise summary of the following text:\n\n{chunk}"
+                response = client.text_generation(prompt, max_new_tokens=150)
+                summary = response[0]['generated_text'].strip()
+            
+            summaries.append(summary)
+
+        # Combine all chunk summaries into a final summary
+        if model in get_openai_models():
+            final_prompt = "Please provide a concise summary of the following summaries:\n\n" + "\n".join(summaries)
+            final_response = client.chat.completions.create(
                 model=model,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": final_prompt}],
                 max_tokens=512
             )
-            summary = response.choices[0].message.content.strip()
+            final_summary = final_response.choices[0].message.content.strip()
         else:
-            prompt = f"Please provide a concise summary of the following text:\n\n{text}"
-            response = client.text_generation(prompt, max_new_tokens=150)
-            summary = response[0]['generated_text'].strip()
-        
-        return summary
+            final_prompt = "Please provide a concise summary of the following summaries:\n\n" + "\n".join(summaries)
+            final_response = client.text_generation(final_prompt, max_new_tokens=150)
+            final_summary = final_response[0]['generated_text'].strip()
+
+        return final_summary
+
     except Exception as e:
         logging.error(f"Summarization failed: {e}")
         return "Résumé non disponible en raison d'une erreur."
