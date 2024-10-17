@@ -1,0 +1,7 @@
+huggingface_hub
+transformers
+langchain
+PyMuPDF
+langchain-community
+langchain_huggingface
+faiss-cpu
